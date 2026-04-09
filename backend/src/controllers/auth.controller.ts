@@ -4,12 +4,12 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
-const REFRESH_SECRET = process.env.REFRESH_SECRET as string;
-
 const generateTokens = (userId: string) => {
-  const accessToken = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '15m' });
-  const refreshToken = jwt.sign({ userId }, REFRESH_SECRET, { expiresIn: '7d' });
+  const jwtSecret = process.env.JWT_SECRET as string;
+  const refreshSecret = process.env.REFRESH_SECRET as string;
+  
+  const accessToken = jwt.sign({ userId }, jwtSecret, { expiresIn: '15m' });
+  const refreshToken = jwt.sign({ userId }, refreshSecret, { expiresIn: '7d' });
   return { accessToken, refreshToken };
 };
 
@@ -152,7 +152,7 @@ export const refreshAccessToken = async (req: Request, res: Response) => {
     const token = req.cookies?.refreshToken;
     if (!token) return res.status(401).json({ message: 'No refresh token' });
 
-    const decoded = jwt.verify(token, REFRESH_SECRET) as { userId: string };
+    const decoded = jwt.verify(token, process.env.REFRESH_SECRET as string) as { userId: string };
     const user = await User.findById(decoded.userId).select('-password');
     if (!user) return res.status(401).json({ message: 'User not found' });
 

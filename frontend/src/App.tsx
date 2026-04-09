@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   BrowserRouter,
   Routes,
@@ -20,10 +20,15 @@ const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 // Recover session from refresh token on app boot
 const SessionHydrator = ({ children }: { children: React.ReactNode }) => {
-  const { setAuth, accessToken } = useAuthStore();
+  const { setAuth, accessToken, user } = useAuthStore();
+  const hasAttempted = useRef(false);
 
   useEffect(() => {
-    if (!accessToken) {
+    // If we have an accessToken but NO user data (e.g. after page refresh)
+    // Or if we have NOTHING at all - we attempt a silent refresh.
+    if ((!accessToken || !user) && !hasAttempted.current) {
+      hasAttempted.current = true;
+      
       // Attempt silent refresh using httpOnly cookie
       fetch(
         `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'}/auth/refresh`,
@@ -37,7 +42,7 @@ const SessionHydrator = ({ children }: { children: React.ReactNode }) => {
         })
         .catch(() => null);
     }
-  }, []);
+  }, [accessToken, user, setAuth]);
 
   return <>{children}</>;
 };

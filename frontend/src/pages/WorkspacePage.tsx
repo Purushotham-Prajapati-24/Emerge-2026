@@ -8,7 +8,6 @@ import { CollaboratorsPanel } from '../features/collaboration/CollaboratorsPanel
 import { NotificationBell } from '../components/notifications/NotificationBell';
 import api from '../services/api';
 import { useAuthStore } from '../store/useAuthStore';
-import { Group, Panel, Separator } from 'react-resizable-panels';
 
 interface Project {
   _id: string;
@@ -79,16 +78,28 @@ const InviteModal = ({ projectId, onClose }: InviteModalProps) => {
           </div>
 
           {status && (
-            <div className={`px-4 py-3 rounded-lg text-sm font-['Inter'] ${status.type === 'success' ? 'bg-emerald-900/20 border border-emerald-500/20 text-emerald-400' : 'bg-red-900/20 border border-red-500/20 text-red-400'}`}>
+            <div className={`px-4 py-3 rounded-lg text-sm font-['Inter'] ${
+              status.type === 'success'
+                ? 'bg-emerald-900/20 border border-emerald-500/20 text-emerald-400'
+                : 'bg-red-900/20 border border-red-500/20 text-red-400'
+            }`}>
               {status.msg}
             </div>
           )}
 
           <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-lg bg-[#0a0d12] border border-[#1e2a3a] text-[#8a98b3] font-['Inter'] text-sm hover:text-[#f1f3fc] transition-colors">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-lg bg-[#0a0d12] border border-[#1e2a3a] text-[#8a98b3] font-['Inter'] text-sm hover:text-[#f1f3fc] transition-colors"
+            >
               Close
             </button>
-            <button type="submit" disabled={loading} className="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-[#a78bfa] to-[#7c3aed] text-white font-['Inter'] font-semibold text-sm hover:opacity-90 disabled:opacity-50 transition-all">
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-2.5 rounded-lg bg-gradient-to-r from-[#a78bfa] to-[#7c3aed] text-white font-['Inter'] font-semibold text-sm hover:opacity-90 disabled:opacity-50 transition-all"
+            >
               {loading ? 'Inviting...' : 'Invite →'}
             </button>
           </div>
@@ -97,13 +108,6 @@ const InviteModal = ({ projectId, onClose }: InviteModalProps) => {
     </div>
   );
 };
-
-// Custom Resize Handle Component
-const ResizeHandle = ({ direction = 'horizontal' }: { direction?: 'horizontal' | 'vertical' }) => (
-  <Separator className={`relative flex items-center justify-center bg-[#1e2a3a] transition-all hover:bg-[#a78bfa]/30 active:bg-[#a78bfa] group ${direction === 'horizontal' ? 'w-1 cursor-col-resize' : 'h-1 cursor-row-resize'}`}>
-    <div className={`bg-[#3a4458] rounded-full transition-all group-hover:bg-[#a78bfa] ${direction === 'horizontal' ? 'w-0.5 h-6' : 'w-6 h-0.5'}`} />
-  </Separator>
-);
 
 export default function WorkspacePage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -117,7 +121,6 @@ export default function WorkspacePage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [collabOpen, setCollabOpen] = useState(false);
 
-  // ... (keep fetchProject and useEffect)
   const fetchProject = async () => {
     if (!projectId) return;
     try {
@@ -148,8 +151,6 @@ export default function WorkspacePage() {
 
   if (!project) return null;
 
-  const anySidebarOpen = aiOpen || chatOpen || collabOpen;
-
   return (
     <div className="h-screen bg-[#0a0d12] flex flex-col overflow-hidden">
       {/* Top Bar */}
@@ -171,6 +172,7 @@ export default function WorkspacePage() {
 
         {/* Right: collaborators + invite + AI toggle */}
         <div className="flex items-center gap-3">
+          {/* Live collaborator avatars (Clickable to open list) */}
           <button 
             onClick={() => { setCollabOpen(o => !o); if (!collabOpen) { setAiOpen(false); setChatOpen(false); } }}
             className={`flex items-center -space-x-1.5 p-1 rounded-xl transition-all hover:bg-[#1e2a3a] ${collabOpen ? 'bg-[#a78bfa]/10 ring-1 ring-[#a78bfa]/30' : ''}`}
@@ -194,10 +196,20 @@ export default function WorkspacePage() {
                 </div>
               )
             ))}
+
+            {/* Pending invitations */}
             {pendingInvites?.map((invite, i) => (
-              <div key={`pending-${i}`} className="relative opacity-40 hover:opacity-100 transition-opacity cursor-help" title={`Invitation sent to @${invite.user.username} (Pending)`}>
+              <div 
+                key={`pending-${i}`}
+                className="relative opacity-40 hover:opacity-100 transition-opacity cursor-help"
+                title={`Invitation sent to @${invite.user.username} (Pending)`}
+              >
                 {invite.user.avatar ? (
-                  <img src={invite.user.avatar} alt={invite.user.username} className="w-6 h-6 rounded-full border-2 border-dashed border-[#a78bfa]/50 object-cover" />
+                  <img
+                    src={invite.user.avatar}
+                    alt={invite.user.username}
+                    className="w-6 h-6 rounded-full border-2 border-dashed border-[#a78bfa]/50 object-cover"
+                  />
                 ) : (
                   <div className="w-6 h-6 rounded-full border-2 border-dashed border-[#a78bfa]/50 bg-[#1e2a3a] flex items-center justify-center text-[9px] text-[#8a98b3] font-['Inter']">
                     {invite.user.username?.[0]?.toUpperCase()}
@@ -221,15 +233,20 @@ export default function WorkspacePage() {
           <button
             onClick={() => { setAiOpen(o => !o); if (!aiOpen) { setChatOpen(false); setCollabOpen(false); } }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-['Inter'] transition-all ${
-              aiOpen ? 'bg-[#a78bfa]/15 text-[#a78bfa] border border-[#a78bfa]/30' : 'bg-[#1e2a3a] text-[#8a98b3] border border-transparent'
+              aiOpen
+                ? 'bg-[#a78bfa]/15 text-[#a78bfa] border border-[#a78bfa]/30'
+                : 'bg-[#1e2a3a] text-[#8a98b3] border border-transparent'
             }`}
           >
             🤖 AI
           </button>
+
           <button
             onClick={() => { setChatOpen(o => !o); if (!chatOpen) { setAiOpen(false); setCollabOpen(false); } }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-['Inter'] transition-all ${
-              chatOpen ? 'bg-[#a78bfa]/15 text-[#a78bfa] border border-[#a78bfa]/30' : 'bg-[#1e2a3a] text-[#8a98b3] border border-transparent'
+              chatOpen
+                ? 'bg-[#a78bfa]/15 text-[#a78bfa] border border-[#a78bfa]/30'
+                : 'bg-[#1e2a3a] text-[#8a98b3] border border-transparent'
             }`}
           >
             💬 Chat
@@ -237,60 +254,57 @@ export default function WorkspacePage() {
         </div>
       </header>
 
-      {/* Main Resizable Workspace */}
-      <div className="flex-1 overflow-hidden">
-        <Group orientation="horizontal">
-          {/* Main Content Area (Editor + Terminal) */}
-          <Panel defaultSize={anySidebarOpen ? 75 : 100} minSize={40}>
-            <Group orientation="vertical">
-              <Panel defaultSize={70} minSize={20}>
-                <div className="h-full w-full overflow-hidden">
-                  {(() => {
-                    const myId = useAuthStore.getState().user?._id || useAuthStore.getState().user?.id;
-                    const myRole = project.collaborators.find(c => c.user._id === myId || c.user === myId)?.role || 'reader';
-                    return (
-                      <MonacoCollaborative
-                        projectId={projectId!}
-                        language={project.language}
-                        role={myRole}
-                      />
-                    );
-                  })()}
-                </div>
-              </Panel>
+      {/* IDE Content */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Editor */}
+        <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${aiOpen ? 'border-r border-[#1e2a3a]' : ''}`}>
+          {/* Monaco Editor */}
+          <div className="flex-1 overflow-hidden">
+            {(() => {
+              const myId = useAuthStore.getState().user?._id || useAuthStore.getState().user?.id;
+              const myRole = project.collaborators.find(c => c.user._id === myId || c.user === myId)?.role || 'reader';
               
-              <ResizeHandle direction="vertical" />
-              
-              <Panel defaultSize={30} minSize={10}>
-                <div className="h-full w-full bg-[#0a0d12]">
-                  <ExecutionTerminal language={project.language} />
-                </div>
-              </Panel>
-            </Group>
-          </Panel>
+              return (
+                <MonacoCollaborative
+                  projectId={projectId!}
+                  language={project.language}
+                  role={myRole}
+                />
+              );
+            })()}
+          </div>
 
-          {anySidebarOpen && (
-            <>
-              <ResizeHandle direction="horizontal" />
-              <Panel defaultSize={25} minSize={15} maxSize={45}>
-                <div className="h-full w-full border-l border-[#1e2a3a] bg-[#0a0d12] overflow-hidden">
-                  {aiOpen && <AIChatPanel />}
-                  {chatOpen && <ChatPanel />}
-                  {collabOpen && (
-                    <CollaboratorsPanel 
-                      projectId={projectId!}
-                      owner={project.owner}
-                      collaborators={project.collaborators}
-                      pendingInvites={pendingInvites || []}
-                      onInviteClick={() => setShowInvite(true)}
-                      onRefresh={fetchProject}
-                    />
-                  )}
-                </div>
-              </Panel>
-            </>
+          {/* Execution Terminal */}
+          <div className="h-48 flex-shrink-0 border-t border-[#1e2a3a]">
+            <ExecutionTerminal language={project.language} />
+          </div>
+        </div>
+
+        {/* Right Sideboards */}
+        <div className={`flex transition-all duration-300 ${aiOpen || chatOpen || collabOpen ? 'w-80' : 'w-0'}`}>
+          {aiOpen && (
+            <div className="w-80 flex-shrink-0 overflow-y-auto h-full">
+              <AIChatPanel />
+            </div>
           )}
-        </Group>
+          {chatOpen && (
+            <div className="w-80 flex-shrink-0 h-full">
+              <ChatPanel />
+            </div>
+          )}
+          {collabOpen && (
+            <div className="w-80 flex-shrink-0 h-full">
+              <CollaboratorsPanel 
+                projectId={projectId!}
+                owner={project.owner}
+                collaborators={project.collaborators}
+                pendingInvites={pendingInvites || []}
+                onInviteClick={() => setShowInvite(true)}
+                onRefresh={fetchProject}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Invite Modal */}

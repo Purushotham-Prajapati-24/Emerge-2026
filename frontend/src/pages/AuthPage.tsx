@@ -183,7 +183,7 @@ function OAuthButton() {
       await signIn.authenticateWithRedirect({
         strategy: 'oauth_google',
         redirectUrl: `${window.location.origin}/oauth-callback`,
-        redirectUrlComplete: `${window.location.origin}/projects`,
+        redirectUrlComplete: `${window.location.origin}/oauth-callback`,
       });
     } catch (error) {
       console.error('Google OAuth failed:', error);

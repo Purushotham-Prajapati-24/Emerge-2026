@@ -1,9 +1,11 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import mongoose from 'mongoose';
-import * as dotenv from 'dotenv';
 import { initSocketService } from './services/socket.service';
 import profileRoutes from './routes/profile.routes';
 import authRoutes from './routes/auth.routes';
@@ -11,8 +13,6 @@ import projectRoutes from './routes/project.routes';
 import executionRoutes from './routes/execution.routes';
 import aiRoutes from './routes/ai.routes';
 import notificationRoutes from './routes/notification.routes';
-
-dotenv.config();
 
 const validateEnv = () => {
   const required = ['MONGO_URI', 'JWT_SECRET', 'GROQ_API_KEY'];
