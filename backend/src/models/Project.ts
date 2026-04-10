@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IProject extends Document {
   title: string;
   language: string;
+  projectType: 'programming' | 'web-development';
   owner: mongoose.Types.ObjectId;
   collaborators: {
     user: mongoose.Types.ObjectId;
@@ -15,6 +16,7 @@ export interface IProject extends Document {
 const ProjectSchema: Schema = new Schema({
   title: { type: String, required: true },
   language: { type: String, default: 'typescript' },
+  projectType: { type: String, enum: ['programming', 'web-development'], default: 'programming' },
   owner: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   collaborators: [{
     user: { type: Schema.Types.ObjectId, ref: 'User' },

@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MonacoCollaborative } from '../features/editor/MonacoCollaborative';
 import { ExecutionTerminal } from '../features/editor/ExecutionTerminal';
+import { FileExplorer } from '../features/editor/FileExplorer';
 import { AIChatPanel } from '../features/ai/AIChatPanel';
+import { WebDevAIPanel } from '../features/ai/WebDevAIPanel';
 import { ChatPanel } from '../features/collaboration/ChatPanel';
 import { CollaboratorsPanel } from '../features/collaboration/CollaboratorsPanel';
+import { WebPreview } from '../features/editor/WebPreview';
 import { NotificationBell } from '../components/notifications/NotificationBell';
 import api from '../services/api';
 import { useAuthStore } from '../store/useAuthStore';
@@ -13,6 +16,7 @@ interface Project {
   _id: string;
   title: string;
   language: string;
+  projectType: 'programming' | 'web-development';
   owner: { name: string; username: string; avatar: string };
   collaborators: { user: { _id: string; username: string; avatar: string }; role: string }[];
   pendingInvitations?: { user: { _id: string; username: string; avatar: string }; role: string; sentAt: string }[];
@@ -121,6 +125,8 @@ export default function WorkspacePage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [collabOpen, setCollabOpen] = useState(false);
+  const [explorerOpen, setExplorerOpen] = useState(true);
+  const [viewMode, setViewMode] = useState<'code' | 'preview'>('code');
 
   const fetchProject = async () => {
     if (!projectId) return;
@@ -166,9 +172,24 @@ export default function WorkspacePage() {
           </button>
           <div className="w-px h-4 bg-[#1e2a3a]" />
           <h1 className="font-['Space_Grotesk'] font-semibold text-sm text-[#f1f3fc]">{project.title}</h1>
-          <span className="px-2 py-0.5 rounded text-xs bg-[#1e2a3a] text-[#8a98b3] font-mono">
-            {project.language}
-          </span>
+          
+          {project.projectType === 'web-development' && (
+            <div className="ml-4 flex bg-[#111720] p-1 rounded-lg border border-[#1e2a3a]">
+              <button
+                onClick={() => setViewMode('code')}
+                className={`px-3 py-1 text-xs font-['Inter'] rounded ${viewMode === 'code' ? 'bg-[#1e2a3a] text-[#f1f3fc]' : 'text-[#8a98b3] hover:text-[#f1f3fc]'}`}
+              >
+                Code
+              </button>
+              <button
+                onClick={() => setViewMode('preview')}
+                className={`px-3 py-1 text-xs font-['Inter'] rounded flex gap-1 items-center ${viewMode === 'preview' ? 'bg-[#a78bfa]/20 text-[#a78bfa]' : 'text-[#8a98b3] hover:text-[#f1f3fc]'}`}
+              >
+                <div className={`w-1.5 h-1.5 rounded-full ${viewMode==='preview' ? 'bg-[#a78bfa]' : 'bg-[#1e2a3a]'}`}></div>
+                Preview
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right: collaborators + invite + AI toggle */}
@@ -257,11 +278,18 @@ export default function WorkspacePage() {
 
       {/* IDE Content */}
       <div className="flex flex-1 overflow-hidden">
+        {/* Left Side: File Explorer */}
+        <div className={`flex-shrink-0 transition-all duration-300 flex ${explorerOpen ? 'w-64' : 'w-12'} bg-[#0d1117] border-r border-[#1e2a3a] overflow-hidden`}>
+          <FileExplorer isOpen={explorerOpen} onToggle={() => setExplorerOpen(!explorerOpen)} />
+        </div>
+
         {/* Editor */}
         <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${aiOpen ? 'border-r border-[#1e2a3a]' : ''}`}>
-          {/* Monaco Editor */}
-          <div className="flex-1 overflow-hidden">
-            {(() => {
+          {/* Main workspace area */}
+          <div className="flex-1 overflow-hidden relative">
+            <div className={`absolute inset-0 ${viewMode !== 'code' ? 'opacity-0 pointer-events-none' : ''}`}>
+              {/* Anonymous self execution pattern for scoping block */}
+              {(() => {
               const myId = user?._id || user?.id;
               // Check if user is the project owner first (owners are NOT in collaborators array)
               const isOwner = project.owner && (
@@ -278,22 +306,36 @@ export default function WorkspacePage() {
                   projectId={projectId!}
                   language={project.language}
                   role={myRole}
+                  projectType={project.projectType}
                 />
               );
             })()}
+            </div>
+            
+            {project.projectType === 'web-development' && (
+              <div className={`absolute inset-0 p-2 ${viewMode !== 'preview' ? 'hidden' : ''}`}>
+                 <WebPreview isActive={viewMode === 'preview'} />
+              </div>
+            )}
           </div>
 
           {/* Execution Terminal */}
-          <div className="h-48 flex-shrink-0 border-t border-[#1e2a3a]">
-            <ExecutionTerminal language={project.language} />
-          </div>
+          {project.projectType !== 'web-development' && (
+            <div className="h-48 flex-shrink-0 border-t border-[#1e2a3a]">
+              <ExecutionTerminal defaultLanguage={project.language} />
+            </div>
+          )}
         </div>
 
         {/* Right Sideboards */}
         <div className={`flex transition-all duration-300 ${aiOpen || chatOpen || collabOpen ? 'w-80' : 'w-0'}`}>
           {aiOpen && (
             <div className="w-80 flex-shrink-0 overflow-y-auto h-full">
-              <AIChatPanel />
+              {project.projectType === 'web-development' ? (
+                <WebDevAIPanel />
+              ) : (
+                <AIChatPanel />
+              )}
             </div>
           )}
           {chatOpen && (

@@ -1,18 +1,22 @@
 import { useState, useCallback } from 'react';
 import api from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useCollaborationStore } from '../../store/useCollaborationStore';
 
 const MAX_HISTORY = 50;
 
 interface ExecutionTerminalProps {
-  language?: string;
+  defaultLanguage?: string;
 }
 
-export const ExecutionTerminal = ({ language = 'javascript' }: ExecutionTerminalProps) => {
+export const ExecutionTerminal = ({ defaultLanguage = 'javascript' }: ExecutionTerminalProps) => {
   const [output, setOutput] = useState<string[]>(['// Terminal ready. Run code to see output.']);
   const [input] = useState('');
   const [running, setRunning] = useState(false);
   const { accessToken } = useAuthStore();
+  const { files, activeFileId } = useCollaborationStore();
+  
+  const language = files.find(f => f.id === activeFileId)?.language || defaultLanguage;
 
   const getEditorContent = useCallback((): string => {
     // Read code from Monaco editor global registry if available

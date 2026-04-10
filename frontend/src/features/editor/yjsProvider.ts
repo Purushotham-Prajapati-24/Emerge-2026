@@ -5,6 +5,7 @@ import { SocketIOProvider } from 'y-socket.io';
 import { MonacoBinding } from 'y-monaco';
 import { editor } from 'monaco-editor';
 import { useCollaborationStore } from '../../store/useCollaborationStore';
+import type { FileNode } from '../../store/useCollaborationStore';
 import { useAuthStore } from '../../store/useAuthStore';
 import { io, Socket } from 'socket.io-client';
 
@@ -108,15 +109,6 @@ export class CollaborationEngine {
     this.provider.awareness.on('change', syncUsers);
     syncUsers();
 
-    // ── Yjs shared text → Monaco binding ─────────────────────────────────────
-    const ytext = this.doc.getText('monaco');
-    this.binding = new MonacoBinding(
-      ytext,
-      monacoModel,
-      new Set([editor]),
-      this.provider.awareness
-    );
-
     // ── Yjs shared array for chat messages ────────────────────────────────────
     const ymessages = this.doc.getArray<Y.Map<any>>('messages');
 
@@ -128,11 +120,71 @@ export class CollaborationEngine {
     // Sync current state immediately
     syncMessages();
 
-    // ── Yjs shared map for workspace metadata ─────────────────────────────────
-    const ymeta = this.doc.getMap<string>('metadata');
-    ymeta.observe(() => {
-      const af = ymeta.get('activeFile');
-      if (af) useCollaborationStore.getState().setActiveFile(af);
+    // ── Yjs shared map for files metadata ─────────────────────────────────
+    const yFilesMeta = this.doc.getMap<FileNode>('filesMeta');
+    
+    const syncFiles = () => {
+      const files: FileNode[] = [];
+      yFilesMeta.forEach((fileNode) => {
+        files.push(fileNode);
+      });
+      
+      // Sort files: main first, then alphabetical
+      files.sort((a, b) => {
+        if (a.isMain && !b.isMain) return -1;
+        if (!a.isMain && b.isMain) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      useCollaborationStore.getState().setFiles(files);
+
+      // If we don't have an active file set (e.g. first load), set it to the best available
+      const currentActiveId = useCollaborationStore.getState().activeFileId;
+      if (!currentActiveId && files.length > 0) {
+        const mainFile = files.find(f => f.isMain) || files[0];
+        useCollaborationStore.getState().setActiveFileId(mainFile.id);
+      }
+    };
+
+    yFilesMeta.observe(() => syncFiles());
+
+    // Seeding default file on initial connect (if doc is entirely empty and we are syncing state)
+    this.provider.on('sync', (isSynced: boolean) => {
+      if (isSynced && yFilesMeta.keys().next().done) {
+        // Only the first ever client will encounter this empty state 
+        // We will seed a default file.
+        const defaultLangRaw = (window as any).__collabDefaultLang || 'javascript';
+        const projectType = (window as any).__collabProjectType;
+        
+        let fileId = 'file_main';
+        let defaultName = 'main.js';
+        let defaultLang = 'javascript';
+        let defaultCode = '// Start coding collaboratively!\n';
+
+        if (projectType === 'web-development') {
+          defaultName = 'index.html';
+          defaultLang = 'html';
+          defaultCode = '<!DOCTYPE html>\n<html lang="en">\n<head>\n  <meta charset="UTF-8" />\n  <meta name="viewport" content="width=device-width, initial-scale=1.0" />\n  <title>Document</title>\n  <script src="https://cdn.tailwindcss.com"></script>\n</head>\n<body>\n  <!-- The agent will generate code here! -->\n</body>\n</html>\n';
+        } else {
+           const defaultExt = defaultLangRaw === 'python' ? 'py' 
+                            : defaultLangRaw === 'typescript' ? 'ts' 
+                            : 'js';
+           defaultName = `main.${defaultExt}`;
+           defaultLang = defaultLangRaw;
+        }
+
+        yFilesMeta.set(fileId, {
+          id: fileId,
+          name: defaultName,
+          language: defaultLang,
+          isMain: true
+        });
+        
+        // Also add some default text
+        const text = this.doc.getText(fileId);
+        text.insert(0, defaultCode);
+      }
+      syncFiles();
     });
 
     // ── Separate Socket.IO connection for app-level events ────────────────────
@@ -160,12 +212,14 @@ export class CollaborationEngine {
       console.log('[SOCKET] App socket disconnected');
     });
 
-    // ── Expose globally for ChatPanel / ExecutionTerminal ─────────────────────
+    // ── Expose globally for ChatPanel / ExecutionTerminal / FileExplorer ──────
     (window as any).__collabDoc = this.doc;
     (window as any).__collabMessages = ymessages;
-    (window as any).__collabMeta = ymeta;
+    (window as any).__collabFiles = yFilesMeta;
     (window as any).__appSocket = this.appSocket;
     (window as any).__collabProjectId = projectId;
+    // Expose store.getState so WebDevAIPanel can read activeFileId without prop drilling
+    (window as any).__collabStoreGetState = useCollaborationStore.getState;
 
     // Clear awareness on unload
     const handleBeforeUnload = () => {

@@ -15,23 +15,33 @@ interface CollabUser {
   color: string;
 }
 
+export interface FileNode {
+  id: string;
+  name: string;
+  language: string;
+  isMain?: boolean;
+}
+
 interface CollaborationState {
   users: CollabUser[];
   messages: Message[];
-  activeFile: string | null;
+  files: FileNode[];
+  activeFileId: string | null;
   terminalOutput: string;
   
   setUsers: (users: CollabUser[]) => void;
   addMessage: (msg: Message) => void;
   setMessages: (msgs: Message[]) => void;
-  setActiveFile: (fileId: string) => void;
+  setFiles: (files: FileNode[]) => void;
+  setActiveFileId: (fileId: string | null) => void;
   appendTerminal: (text: string) => void;
 }
 
 export const useCollaborationStore = create<CollaborationState>((set) => ({
   users: [],
   messages: [],
-  activeFile: null,
+  files: [],
+  activeFileId: null,
   terminalOutput: '',
 
   setUsers: (users) => set({ users }),
@@ -42,7 +52,9 @@ export const useCollaborationStore = create<CollaborationState>((set) => ({
 
   setMessages: (messages) => set({ messages }),
 
-  setActiveFile: (activeFile) => set({ activeFile }),
+  setFiles: (files) => set({ files }),
+
+  setActiveFileId: (activeFileId) => set({ activeFileId }),
 
   appendTerminal: (text) => set((state) => ({ 
     terminalOutput: state.terminalOutput + text 

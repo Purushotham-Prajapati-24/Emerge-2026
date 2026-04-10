@@ -1,6 +1,6 @@
 import { Response } from 'express';
 import { z } from 'zod';
-import { requestCodeSuggestion, requestChatResponse, requestTerminalAnalysis } from '../services/ai.service';
+import { requestCodeSuggestion, requestChatResponse, requestTerminalAnalysis, requestWebGeneration } from '../services/ai.service';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
 const suggestSchema = z.object({
@@ -41,6 +41,25 @@ export const getChatResponse = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Invalid chat context', errors: error.errors });
     }
     return res.status(500).json({ message: 'AI chat failed' });
+  }
+};
+
+const webGenSchema = z.object({
+  prompt: z.string().min(1).max(5000),
+  codeContext: z.string().max(50000).default(''),
+});
+
+// POST /api/ai/web-generate
+export const getWebGeneration = async (req: AuthRequest, res: Response) => {
+  try {
+    const { prompt, codeContext } = webGenSchema.parse(req.body);
+    const response = await requestWebGeneration(prompt, codeContext);
+    return res.status(200).json({ response });
+  } catch (error: any) {
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ message: 'Invalid web generation request', errors: error.errors });
+    }
+    return res.status(500).json({ message: 'AI Web Generation failed' });
   }
 };
 

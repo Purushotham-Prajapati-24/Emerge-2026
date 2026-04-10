@@ -8,17 +8,24 @@ import { AuthRequest } from '../middlewares/auth.middleware';
 const createProjectSchema = z.object({
   title: z.string().min(1).max(100),
   language: z.string().default('typescript'),
+  projectType: z.enum(['programming', 'web-development']).default('programming'),
+});
+
+const updateProjectSchema = z.object({
+  title: z.string().min(1).max(100).optional(),
+  language: z.string().optional(),
 });
 
 // POST /api/projects
 export const createProject = async (req: AuthRequest, res: Response) => {
   try {
-    const { title, language } = createProjectSchema.parse(req.body);
+    const { title, language, projectType } = createProjectSchema.parse(req.body);
     const userId = req.user!.userId;
 
     const project = await Project.create({
       title,
       language,
+      projectType,
       owner: userId,
       collaborators: [{ user: userId, role: 'owner' }],
     });
@@ -75,6 +82,56 @@ export const getProject = async (req: AuthRequest, res: Response) => {
     });
   } catch (error) {
     return res.status(500).json({ message: 'Failed to fetch project' });
+  }
+};
+
+// PATCH /api/projects/:id
+export const updateProject = async (req: AuthRequest, res: Response) => {
+  try {
+    const { title, language } = updateProjectSchema.parse(req.body);
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).json({ message: 'Project not found' });
+
+    if (project.owner.toString() !== req.user!.userId) {
+      return res.status(403).json({ message: 'Only the owner can update this project' });
+    }
+
+    if (title) project.title = title;
+    if (language) project.language = language;
+    await project.save();
+
+    return res.status(200).json({ project });
+  } catch (error: any) {
+    if (error.name === 'ZodError') return res.status(400).json({ message: error.errors });
+    return res.status(500).json({ message: 'Failed to update project' });
+  }
+};
+
+// DELETE /api/projects/:id
+export const deleteProject = async (req: AuthRequest, res: Response) => {
+  try {
+    const project = await Project.findById(req.params.id);
+    if (!project) return res.status(404).json({ message: 'Project not found' });
+
+    if (project.owner.toString() !== req.user!.userId) {
+      return res.status(403).json({ message: 'Only the owner can delete this project' });
+    }
+
+    // Remove project ref from all collaborators
+    const collaboratorIds = project.collaborators.map((c: any) => c.user.toString());
+    await User.updateMany(
+      { _id: { $in: collaboratorIds } },
+      { $pull: { projects: project._id } }
+    );
+
+    // Cancel all pending invitations for this project
+    await Notification.deleteMany({ project: project._id });
+
+    await Project.findByIdAndDelete(req.params.id);
+
+    return res.status(200).json({ message: 'Project deleted successfully' });
+  } catch (error) {
+    return res.status(500).json({ message: 'Failed to delete project' });
   }
 };
 

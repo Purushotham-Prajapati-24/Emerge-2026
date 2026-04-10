@@ -2,12 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import { CollaborationEngine } from './yjsProvider';
 import { useAuthStore } from '../../store/useAuthStore';
+import { useCollaborationStore } from '../../store/useCollaborationStore';
+// @ts-ignore
+import { MonacoBinding } from 'y-monaco';
 import './collaboration.css';
 
 interface MonacoCollaborativeProps {
   projectId: string;
   language?: string;
   role?: string;
+  projectType?: 'programming' | 'web-development';
 }
 
 // Deterministic color from user ID so the same user always gets the same color
@@ -20,11 +24,16 @@ function colorFromId(id: string): string {
   return `hsl(${hue}, 70%, 65%)`;
 }
 
-export const MonacoCollaborative = ({ projectId, language = 'typescript', role = 'editor' }: MonacoCollaborativeProps) => {
+export const MonacoCollaborative = ({ projectId, language = 'javascript', role = 'editor', projectType = 'programming' }: MonacoCollaborativeProps) => {
   const editorRef = useRef<any>(null);
   const engineRef = useRef<CollaborationEngine | null>(null);
+  const bindingRef = useRef<any>(null);
   const [engineReady, setEngineReady] = useState(false);
   const { user } = useAuthStore();
+  const { activeFileId, files } = useCollaborationStore();
+
+  // Find language for active file
+  const activeLang = files.find(f => f.id === activeFileId)?.language || language;
 
   // owner and editor roles can type; reader/commenter cannot
   const isReadOnly = role === 'reader' || role === 'commenter';
@@ -74,6 +83,10 @@ export const MonacoCollaborative = ({ projectId, language = 'typescript', role =
       engineRef.current = null;
     }
 
+    // Helper language for seeding
+    (window as any).__collabDefaultLang = language;
+    (window as any).__collabProjectType = projectType;
+
     const engine = new CollaborationEngine();
     engineRef.current = engine;
 
@@ -96,14 +109,49 @@ export const MonacoCollaborative = ({ projectId, language = 'typescript', role =
       engineRef.current = null;
       (window as any).__collabEngine = null;
     };
-  }, [user, projectId, engineReady]);
+  }, [user, projectId, engineReady, language]);
+
+  // Handle active file changing - rebinding the CRDT
+  useEffect(() => {
+    if (!engineRef.current || !editorRef.current || !activeFileId) return;
+    
+    const doc = engineRef.current.doc;
+    const provider = (engineRef.current as any).provider;
+    
+    if (!doc || !provider) return;
+
+    // Destroy existing binding
+    if (bindingRef.current) {
+      bindingRef.current.destroy();
+      bindingRef.current = null;
+    }
+
+    const ytext = doc.getText(activeFileId);
+    
+    // Create new binding
+    bindingRef.current = new MonacoBinding(
+      ytext,
+      editorRef.current.getModel(),
+      new Set([editorRef.current]),
+      provider.awareness
+    );
+
+    return () => {
+      if (bindingRef.current) {
+        bindingRef.current.destroy();
+        bindingRef.current = null;
+      }
+    };
+  }, [activeFileId, engineReady]);
 
   return (
-    <div className="w-full h-full relative rounded-xl overflow-hidden bg-[#0a0e14] shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
+    <div className="w-full h-full relative rounded-xl overflow-hidden bg-[#0a0e14] shadow-[0_12px_40px_rgba(0,0,0,0.5)] flex flex-col">
+      {/* File Tabs header (optional padding if we want tabs here later, but WorkspacePage has Explorer) */}
+      <div className="h-2 w-full bg-[#111720]" />
       <Editor
-        height="100%"
-        defaultLanguage={language}
-        defaultValue={`// ${language} workspace — start coding collaboratively!\n`}
+        height="calc(100% - 8px)"
+        language={activeLang}
+        defaultValue={`// ... Loading\n`}
         onMount={handleEditorDidMount}
         options={{
           readOnly: isReadOnly,
