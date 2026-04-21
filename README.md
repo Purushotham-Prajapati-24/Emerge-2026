@@ -48,6 +48,30 @@ graph TD
 
 ---
 
+## ⚡ Visual Experience
+
+Experience the **Kinetic Terminal** in action. Our interface is designed for focus, utilizing deep tonal shifts and glassmorphism to create a physical workspace feeling.
+
+````carousel
+![Workspace Capture](frontend/public/assets/showcase/workspace.png)
+Workspace: Monaco powered editor with real-time sync and integrated terminal.
+<!-- slide -->
+![AI Architect](frontend/public/assets/showcase/ai_architect.png)
+AI Architect: Context-aware assistance with specialized coding actions.
+<!-- slide -->
+![Dashboard](frontend/public/assets/showcase/dashboard.png)
+Project Dashboard: Manage your collaborative labs and team invitations.
+<!-- slide -->
+![Multiplayer Chat](frontend/public/assets/showcase/chat.png)
+Collaborative Chat: Real-time communication while you build.
+<!-- slide -->
+![Auth Experience](frontend/public/assets/showcase/auth.png)
+Auth: Secure, identity-first entry via Developer's Den.
+````
+
+---
+
+
 ## 💎 Premium Features
 
 | Feature | Description | Implementation |
